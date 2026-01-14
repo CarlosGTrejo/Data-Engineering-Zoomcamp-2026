@@ -64,15 +64,72 @@ We will create a simple pipeline that:
 #### Process
 1. Create venv using uv: `uv init --python 3.13 && uv venv && source ./.venv/bin/activate`
 2. Add dependencies:
-  - `uv add pandas pyarrow typer enlighten dlt[filesystem,parquet,postgres]`
-  - `uv add --dev pgcli`
+    - `uv add pandas pyarrow typer enlighten dlt[filesystem,parquet,postgres]`
+    - `uv add --dev pgcli`
 3. Write the [script](pipeline.py)
 4. Create the [dockerfile](Dockerfile)
 5. Build the image: `docker build -t pipeline -f ./01-docker-terraform/Dockerfile .`
-  - The `-f` flag specifies the path to the Dockerfile.
-  - The `.` at the end specifies the build context (current directory, which is the parent directory). Without it, Docker won't be able to find the files to copy into the image. Even if we run the command from the same directory as the files.
-6. Verify our pipeline works: `docker run --rm pipeline`
-7. Run postgres in a container: `docker run -it --rm -e POSTGRES_USER="root" -e POSTGRES_PASSWORD="root" -e POSTGRES_DB="ny_taxi" -v postgres_db:/var/lib/postgresql -p 5432:5432 postgres:18`
-8. Connect to postgres with pgcli:
-  - `pgcli postgresql://root@localhost:5432/ny_taxi`
-  - OR `pgcli -h localhost -p 5432 -u root -d ny_taxi`
+    - The `-f` flag specifies the path to the Dockerfile.
+    - The `.` at the end specifies the build context (current directory, which is the parent directory). Without it, Docker won't be able to find the files to copy into the image. Even if we run the command from the same directory as the files.
+6. Verify our pipeline works:
+    1. Deploy a test Postgres container: `docker run -it --rm -e POSTGRES_USER="root" -e POSTGRES_PASSWORD="root" -e POSTGRES_DB="ny_taxi" -p 5432:5432 postgres:18`
+    2. Load the data into the test database: `python pipeline.py`
+    3. Verify data is loaded using pgcli:
+        - `pgcli postgresql://root@localhost:5432/ny_taxi`
+        - OR `pgcli -h localhost -p 5432 -u root -d ny_taxi`
+7. Create a network for our docker containers to communicate: `docker network create pipeline-network`
+8. Run postgres in a container:
+    - `docker run -it --rm -e POSTGRES_USER="root" -e POSTGRES_PASSWORD="root" -e POSTGRES_DB="ny_taxi" -v postgres_db:/var/lib/postgresql -p 5432:5432 --network=pipeline-network --name postgres_db postgres:18`
+9. Run pgAdmin in another container:
+    - `docker run -it --rm -e PGADMIN_DEFAULT_EMAIL="admin@admin.com" -e PGADMIN_DEFAULT_PASSWORD="root" -p 8080:80 --network=pipeline-network --name pgadmin dpage/pgadmin4`
+10. Deploy the pipeline container to load data into Postgres:
+    - for `host` use `postgres_db` (the name of the Postgres container)
+    - `docker run -it --rm --network=pipeline-network pipeline --host postgres_db`
+
+---
+
+## SQL Refresher
+- When selecting from multiple tables and using a WHERE clause, the default join is an INNER JOIN.
+  - An inner join returns only the rows where there is a match in both tables based on the join condition (like the middle section of a venn diagram).
+  - If you want to explicitly specify an inner join, you can use `INNER JOIN` or `JOIN`. Then you can ommit the join condition from the WHERE clause and put it in the ON clause.
+  - Example:
+    ```sql
+    SELECT
+        tpep_pickup_datetime,
+        tpep_dropoff_datetime,
+        total_amount,
+        CONCAT(zpu."Borough", ' | ', zpu."Zone") AS "pickup_loc",
+        CONCAT(zdo."Borough", ' | ', zdo."Zone") AS "dropoff_loc"
+    FROM
+        yellow_taxi_trips t,
+        zones zpu,
+        zones zdo
+    WHERE
+        t."PULocationID" = zpu."LocationID"
+        AND t."DOLocationID" = zdo."LocationID"
+    LIMIT 100;
+    ```
+    Can be rewritten as (notice the WHERE clause is gone):
+    ```sql
+    SELECT
+        tpep_pickup_datetime,
+        tpep_dropoff_datetime,
+        total_amount,
+        CONCAT(zpu."Borough", ' | ', zpu."Zone") AS "pickup_loc",
+        CONCAT(zdo."Borough", ' | ', zdo."Zone") AS "dropoff_loc"
+    FROM
+        yellow_taxi_trips t
+    JOIN
+        zones zpu ON t."PULocationID" = zpu."LocationID"
+    JOIN
+        zones zdo ON t."DOLocationID" = zdo."LocationID"
+    LIMIT 100;
+- You can add an alias to a table or column using the `AS` keyword, or simply by placing the alias after the table or column name.
+  - Example: `zones zpu` gives the `zones` table an alias of `zpu`.
+  - Example: `CONCAT(zpu."Borough", ' | ', zpu."Zone") AS "pickup_loc"` gives the concatenated column an alias of `pickup_loc`.
+- You can also reference columns using their index position in the SELECT clause.
+  - Example: `ORDER BY 3 DESC` orders the results by the third column in the SELECT clause in descending order.
+  - Example: `GROUP BY 1, 2` groups the results by the first and second columns in the SELECT clause.
+- Use double quotes `"` for identifiers (table names, column names) that are case-sensitive or contain special characters.
+- Use single quotes `'` for string literals.
+  - Example: `SELECT * FROM table WHERE column = 'string_value';`

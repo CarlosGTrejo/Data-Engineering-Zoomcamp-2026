@@ -23,14 +23,21 @@ def get_bucket_path(url: str) -> str:
     return f"{url_parts.scheme}://{url_parts.netloc}{path.parent}/"
 
 
-def build_pipeline(destination: Literal["postgres", "parquet"]) -> "Pipeline":
+def build_pipeline(
+    destination: Literal["postgres", "parquet"],
+    user: str,
+    password: str,
+    host: str,
+    port: int,
+    database: str,
+) -> "Pipeline":
     pipeline: "Pipeline"
     if destination == "postgres":
         pipeline = dlt.pipeline(
             pipeline_name="csv_to_postgres",
             dataset_name="ny_taxi",
             destination=dlt.destinations.postgres(
-                "postgresql://root:root@localhost:5432/ny_taxi"
+                f"postgresql://{user}:{password}@{host}:{port}/{database}"
             ),
         )
     else:
@@ -57,6 +64,11 @@ def main(
         datetime,
         typer.Option(formats=["%Y-%m"], help="Year and month for data to load"),
     ] = datetime.strptime("2021-01", "%Y-%m"),
+    user: Annotated[str, typer.Option(help="Postgres user")] = "root",
+    password: Annotated[str, typer.Option(help="Postgres password")] = "root",
+    host: Annotated[str, typer.Option(help="Postgres host")] = "localhost",
+    port: Annotated[int, typer.Option(help="Postgres port")] = 5432,
+    database: Annotated[str, typer.Option(help="Postgres database")] = "ny_taxi",
 ):
     period_str: str = period.strftime("%Y-%m")
     release = "71974786" if color == "yellow" else "71979983"
@@ -88,7 +100,7 @@ def main(
         raise ValueError(f"No data found for {color} taxi for period {period_str}")
 
     # ============= Second Stage: Save to Postgres OR Parquet============= #
-    pipeline = build_pipeline(destination)
+    pipeline = build_pipeline(destination, user, password, host, port, database)
 
     bucket_path = get_bucket_path(urls[0])
     for url in urls:

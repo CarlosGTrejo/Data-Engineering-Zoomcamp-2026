@@ -1,0 +1,35 @@
+services:
+  postgres_db:
+    image: postgres:18
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: ny_taxi
+    volumes:
+      - postgres_db:/var/lib/postgresql
+    ports:
+      - "5432:5432"
+    networks:
+      - pipeline-network
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: root
+    ports:
+      - "8080:80"
+    depends_on:
+      - postgres_db
+    networks:
+      - pipeline-network
+
+volumes:
+  postgres_db:
+
+
+networks:
+  pipeline-network:
+    name: pipeline-network
