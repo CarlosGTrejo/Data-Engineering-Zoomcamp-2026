@@ -1,12 +1,15 @@
 from datetime import datetime
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 from urllib.parse import urlparse
 
 import dlt
 import typer
 from dlt.sources.filesystem import filesystem, read_csv
 from dlt.sources.rest_api import rest_api_source
+
+if TYPE_CHECKING:
+    from dlt.pipeline import Pipeline
 
 
 def get_resource_name(url: str) -> str:
@@ -20,7 +23,8 @@ def get_bucket_path(url: str) -> str:
     return f"{url_parts.scheme}://{url_parts.netloc}{path.parent}/"
 
 
-def build_pipeline(destination: Literal["postgres", "parquet"]) -> dlt.Pipeline:
+def build_pipeline(destination: Literal["postgres", "parquet"]) -> "Pipeline":
+    pipeline: "Pipeline"
     if destination == "postgres":
         pipeline = dlt.pipeline(
             pipeline_name="csv_to_postgres",
@@ -52,7 +56,7 @@ def main(
     period: Annotated[
         datetime,
         typer.Option(formats=["%Y-%m"], help="Year and month for data to load"),
-    ] = datetime.strptime("2020-01", "%Y-%m"),
+    ] = datetime.strptime("2021-01", "%Y-%m"),
 ):
     period_str: str = period.strftime("%Y-%m")
     release = "71974786" if color == "yellow" else "71979983"
