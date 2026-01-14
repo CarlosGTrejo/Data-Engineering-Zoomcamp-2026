@@ -58,16 +58,21 @@
 We will create a simple pipeline that:
 - Runs a Python script inside a Docker container.
 - Uses uv as the package manager
-- Extracts data from a public API (e.g., https://jsonplaceholder.typicode.com/users)
+- Extracts data from a public API (NYC Taxi data from GitHub Repo)
 - Exports the data as a parquet file
 
 #### Process
 1. Create venv using uv: `uv init --python 3.13 && uv venv && source ./.venv/bin/activate`
-2. Add dependencies: `uv add pandas pyarrow typer dlt dlt[filesystem,parquet]`
+2. Add dependencies:
+  - `uv add pandas pyarrow typer enlighten dlt[filesystem,parquet,postgres]`
+  - `uv add --dev pgcli`
 3. Write the [script](pipeline.py)
 4. Create the [dockerfile](Dockerfile)
 5. Build the image: `docker build -t pipeline -f ./01-docker-terraform/Dockerfile .`
   - The `-f` flag specifies the path to the Dockerfile.
   - The `.` at the end specifies the build context (current directory, which is the parent directory). Without it, Docker won't be able to find the files to copy into the image. Even if we run the command from the same directory as the files.
 6. Verify our pipeline works: `docker run --rm pipeline`
-7. Run postgres in a container: `docker run -it --rm -e POSTGRES_PASSWORD="root" -e POSTGRES_DB="ny_taxi" -v postgres_db:/var/lib/postgresql -p 5432:5432 postgres:18`
+7. Run postgres in a container: `docker run -it --rm -e POSTGRES_USER="root" -e POSTGRES_PASSWORD="root" -e POSTGRES_DB="ny_taxi" -v postgres_db:/var/lib/postgresql -p 5432:5432 postgres:18`
+8. Connect to postgres with pgcli:
+  - `pgcli postgresql://root@localhost:5432/ny_taxi`
+  - OR `pgcli -h localhost -p 5432 -u root -d ny_taxi`

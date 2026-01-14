@@ -5,7 +5,8 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "dlt[filesystem]>=1.20.0",
+    "dlt[filesystem,postgres]>=1.20.0",
+    "enlighten>=1.14.1",
     "pandas>=2.3.3",
     "pyarrow>=22.0.0",
     "typer>=0.21.1",
