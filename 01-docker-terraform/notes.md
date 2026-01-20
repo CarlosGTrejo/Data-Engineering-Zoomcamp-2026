@@ -124,6 +124,8 @@ We will create a simple pipeline that:
     JOIN
         zones zdo ON t."DOLocationID" = zdo."LocationID"
     LIMIT 100;
+  ```
+
 - You can add an alias to a table or column using the `AS` keyword, or simply by placing the alias after the table or column name.
   - Example: `zones zpu` gives the `zones` table an alias of `zpu`.
   - Example: `CONCAT(zpu."Borough", ' | ', zpu."Zone") AS "pickup_loc"` gives the concatenated column an alias of `pickup_loc`.
@@ -133,3 +135,24 @@ We will create a simple pipeline that:
 - Use double quotes `"` for identifiers (table names, column names) that are case-sensitive or contain special characters.
 - Use single quotes `'` for string literals.
   - Example: `SELECT * FROM table WHERE column = 'string_value';`
+
+---
+
+## Terraform
+- Terraform is an Infrastructure as Code (IaC) tool that allows you to define and manage infrastructure using declarative configuration files.
+- Key concepts:
+  - **Provider**: A plugin that allows Terraform to interact with cloud providers (e.g., AWS, GCP, Azure) or other services.
+  - **Resource**: A component of your infrastructure (e.g., virtual machines, databases, networks).
+  - **Module**: A reusable configuration that can be shared and used across different projects.
+  - **State**: A file that keeps track of the resources managed by Terraform.
+  - **Service Accounts**: Special accounts used to authenticate and authorize Terraform to manage resources in cloud providers.
+- Basic commands:
+  - `terraform init` : Initializes a Terraform working directory by downloading the necessary provider plugins and setting up the backend.
+  - `terraform plan` : Generates an execution plan, showing what actions Terraform will take to achieve the desired state defined in the configuration files.
+  - `terraform apply`: Applies the changes required to reach the desired state of the configuration.
+  - `terraform destroy` : Destroys all resources managed by Terraform in the current configuration.
+- Best practices:
+  - Use version control (e.g., Git) to manage your Terraform configuration files.
+  - Use remote backends (e.g., Terraform Cloud, S3) to store the Terraform state file securely.
+  - Use modules to organize and reuse your Terraform code.
+
