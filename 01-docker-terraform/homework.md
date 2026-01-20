@@ -20,7 +20,9 @@ Run docker with the `python:3.13` image. Use an entrypoint `bash` to interact wi
 
 What's the version of `pip` in the image?
 ```bash
-docker run --rm -it python:3.13-slim python -m pip --version
+docker run --rm -it --entrypoint /bin/bash python:3.13-slim
+
+root@6cad07c87c87512:/# python -m pip --version
 pip 25.3 from /usr/local/lib/python3.13/site-packages/pip (python 3.13)
 ```
 - 25.3
