@@ -4,5 +4,5 @@ This repository contains my work for the DE Zoomcamp 2026 course. It includes my
 
 ## Table of Contents
 
-- 01. Docker and Terraform
-  - [Notes](01_docker_terraform/notes.md)
+1. Docker and Terraform
+    - [Notes](01_docker_terraform/notes.md)
