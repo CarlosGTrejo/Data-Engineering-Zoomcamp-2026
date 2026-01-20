@@ -19,8 +19,8 @@ the README file of your repository.
 Run docker with the `python:3.13` image. Use an entrypoint `bash` to interact with the container.
 
 What's the version of `pip` in the image?
-```
-$ docker run --rm -it python:3.13-slim python -m pip --version
+```bash
+docker run --rm -it python:3.13-slim python -m pip --version
 pip 25.3 from /usr/local/lib/python3.13/site-packages/pip (python 3.13)
 ```
 - 25.3
@@ -119,11 +119,19 @@ LIMIT 1;
 ## Question 5. Biggest pickup zone
 
 Which was the pickup zone with the largest `total_amount` (sum of all trips) on November 18th, 2025?
+```sql
+CREATE TABLE zone_lookup AS SELECT * FROM read_csv_auto('taxi_zone_lookup.csv');
+
+SELECT PULocationID, "Zone", SUM(total_amount) as Total FROM trip, zones WHERE CAST(lpep_pickup_datetime AS DATE) = '2025-11-18' AND LocationID = PULocationID GROUP BY PULocationID, "Zone" ORDER BY Total DESC LIMIT 1;
+┌──────────────┬───────────────────┬────────────────────┐
+│ PULocationID │       Zone        │       Total        │
+│    int32     │      varchar      │       double       │
+├──────────────┼───────────────────┼────────────────────┤
+│           74 │ East Harlem North │  9281.919999999998 │
+└──────────────┴───────────────────┴────────────────────┘
+```
 
 - East Harlem North
-- East Harlem South
-- Morningside Heights
-- Forest Hills
 
 
 ## Question 6. Largest tip
@@ -132,10 +140,17 @@ For the passengers picked up in the zone named "East Harlem North" in November 2
 
 Note: it's `tip` , not `trip`. We need the name of the zone, not the ID.
 
-- JFK Airport
+```sql
+SELECT zdo."Zone" dropoff, tip_amount FROM trip t JOIN zones AS zpu ON t.PULocationID = zpu.LocationID JOIN zones AS zdo ON t.DOLocationID = zdo.LocationID WHERE zpu."Zone" = 'East Harlem North' ORDER BY tip_amount DESC LIMIT 1;
+┌────────────────┬────────────┐
+│    dropoff     │ tip_amount │
+│    varchar     │   double   │
+├────────────────┼────────────┤
+│ Yorkville West │   81.89    │
+└────────────────┴────────────┘
+```
+
 - Yorkville West
-- East Harlem North
-- LaGuardia Airport
 
 
 ## Terraform
@@ -157,11 +172,7 @@ Which of the following sequences, respectively, describes the workflow for:
 3. Remove all resources managed by terraform`
 
 Answers:
-- terraform import, terraform apply -y, terraform destroy
-- teraform init, terraform plan -auto-apply, terraform rm
-- terraform init, terraform run -auto-approve, terraform destroy
 - terraform init, terraform apply -auto-approve, terraform destroy
-- terraform import, terraform apply -y, terraform rm
 
 
 ## Submitting the solutions
