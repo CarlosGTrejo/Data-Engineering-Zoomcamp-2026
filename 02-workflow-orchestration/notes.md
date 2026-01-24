@@ -87,3 +87,55 @@ Our pipeline will:
 * We can add audit metadata columns to the final table (created_at, updated_at, etc) for deta lineage and tracking.
 * Use SHA256 instead of MD5 for better uniqueness.
 * Calculate the hash on thhe fly during the merge for performance improvement instead of storing it in the staging table.
+
+## Adding Scheduling
+
+We can schedule our flow to run automatically using `io.kestra.plugin.core.trigger.Schedule` with a cron expression:
+```yaml
+triggers:
+  - id: green_schedule
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 9 1 * *"
+    inputs:
+      taxi: green
+```
+
+As a refresher, the cron expression format is:
+```
+* * * * *
+| | | | | | 
+| | | | +---- Weekday (0 - 7 or SUN-SAT, 0 and 7 are both Sunday)
+| | | +------ Month (1 - 12 or JAN-DEC)
+| | +-------- Day of the month (1 - 31)
+| +---------- Hour (0 - 23)
++------------ Minute (0 - 59)
+```
+
+We can use the "backfill" button to run our flow for past dates as well, but note that the date selected must include when the cron would have triggered.
+
+## ETL vs ELT
+**ETL (Extract, Transform, Load)**
+- Data is extracted from source systems.
+- Data is transformed in an intermediate staging area, preparing it for the final target.
+- Transformed data is loaded into the target system
+
+**ELT (Extract, Load, Transform)**
+- Data is extracted from source systems.
+- Data is loaded directly into the target system (data lake)
+- Data is transformed within the target system using its processing capabilities.
+
+**Why ELT?**
+- For large datasets, it's often more efficient to load raw data into a data lake and then transform it as needed, since you have the scalability and processing power of the data lake (like Google BigQuery, AWS Redshift, etc).
+- ELT allows for more flexibility, as raw data is preserved and can be transformed in multiple ways for different use cases.
+- Modern data lakes and warehouses are optimized for handling large-scale transformations, making ELT a more practical approach in many scenarios.
+
+**When to use ETL vs ELT?**
+- Choose **ELT** when you already have a cloud warehouse/lakehouse (BigQuery, Snowflake, Redshift, Databricks). Land raw data first, then transform with SQL inside the warehouse. Great for flexibility, easy reprocessing, and serving many teams.
+- Choose **ETL** when the destination cannot hold raw data (OLTP DB, legacy system, SaaS app) or you must clean/remove PII before storage. Also use it when you need very low latency and only keep the final shaped data.
+- **ELT perks:** simple ingestion, keep raw history, fast backfills, reuse one raw copy for many marts, cheaper ops by using warehouse compute.
+- **ETL perks:** tight control before data lands, smaller storage, privacy-by-design, works with targets that can't crunch big transforms.
+- **Good ELT signals:** you have a warehouse; transforms are mostly SQL; analysts want raw + curated layers; expect backfills.
+- **Good ETL signals:** no warehouse; strict PII rules; heavy non-SQL/ML work needed up front; sub-second SLA with no raw kept.
+- **Practical mix:** do a light first pass (basic cleanup, hash/encrypt sensitive fields), store it, then finish transforms in the warehouse.
+
+## Setting up Google Cloud and BigQuery
