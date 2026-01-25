@@ -88,6 +88,13 @@ Our pipeline will:
 * Use SHA256 instead of MD5 for better uniqueness.
 * Calculate the hash on thhe fly during the merge for performance improvement instead of storing it in the staging table.
 
+If you'd like to remove the files that are downloaded you can add the following task:
+```yaml
+  - id: purge_files
+    type: io.kestra.plugin.core.storage.PurgeCurrentExecutionFiles
+    description: This will remove output files. If you'd like to explore Kestra outputs, disable it.
+```
+
 ## Adding Scheduling
 
 We can schedule our flow to run automatically using `io.kestra.plugin.core.trigger.Schedule` with a cron expression:
@@ -138,4 +145,73 @@ We can use the "backfill" button to run our flow for past dates as well, but not
 - **Good ETL signals:** no warehouse; strict PII rules; heavy non-SQL/ML work needed up front; sub-second SLA with no raw kept.
 - **Practical mix:** do a light first pass (basic cleanup, hash/encrypt sensitive fields), store it, then finish transforms in the warehouse.
 
-## Setting up Google Cloud and BigQuery
+## ELT Pipelines in Kestra with Google Cloud Platform (GCP)
+
+We will create an ELT pipeline that uses:
+1. Google Cloud Storage (GCS) as a data lake
+2. BigQuery as a data warehouse.
+
+After having set up a Google Cloud account and project, we need to:
+1. Create a service account with BigQuery Admin role and Storage Admin role.
+2. Create and download a JSON key for the service account.
+3. Base64 encode the JSON key file and store it in a .env file as `SECRET_GCP_CREDS`.
+   - Linux:  
+     ```bash
+     echo -n "SECRET_GCP_CREDS=$(base64 -w 0 path/to/your/gcp-key.json)" > .env
+     ```
+   - Windows (PowerShell):  
+     ```powershell
+     $b64 = [Convert]::ToBase64String([System.IO.File]::ReadAllBytes("path\to\your\gcp-key.json"))
+     Set-Content -Path .env -Value "SECRET_GCP_CREDS=$b64"
+     ```
+4. Add the .env file to the Kestra Docker Compose file with `env_file: .env`.
+5. Start up Kestra, then verify that the secret is available by going to the "Secrets" tab on the left side of the UI, and scrolling down where it says "Here are secret-type environment variables identified at instance start-time:". You should see `GCP_CREDS` listed there.
+6. You can then reference the secret in your Kestra flows as `{{ secret('GCP_CREDS') }}`.
+
+_More details can be found in the [Configure Google Service Account](https://kestra.io/docs/how-to-guides/google-credentials#add-service-account-as-a-secret) docs._
+
+Push the KV flow to Kestra which will help us store info into the kestra KV store (update the flow to use your own GCP project and dataset):
+```bash
+curl -X POST -u 'admin@kestra.io:Admin1234' http://localhost:8080/api/v1/flows/import -F fileUpload=@flows/06_gcp_kv.yaml
+```
+
+Push the GCP setup flow to Kestra which will use the KV store to create our bucket and dataset in BigQuery:
+```bash
+curl -X POST -u 'admin@kestra.io:Admin1234' http://localhost:8080/api/v1/flows/import -F fileUpload=@flows/07_gcp_setup.yaml
+```
+Be sure to update the flow to use the secret for your GCP creds by using the `secret('GCP_CREDS')` function.
+
+
+Now we will create the ELT flow that will:
+1. Extract the data from the taxi csv files
+2. Load the raw data into GCS
+3. Transform and load the data into BigQuery
+
+```mermaid
+graph LR
+  SetLabel[Set Labels] --> Extract[Extract CSV Data]
+  Extract --> UploadToGCS[Upload Data to GCS]
+  UploadToGCS -->|Taxi=Yellow| BQYellowTripdata[Main Yellow Tripdata Table]:::yellow
+  UploadToGCS -->|Taxi=Green| BQGreenTripdata[Main Green Tripdata Table]:::green
+  BQYellowTripdata --> BQYellowTableExt[External Table]:::yellow
+  BQGreenTripdata --> BQGreenTableExt[External Table]:::green
+  BQYellowTableExt --> BQYellowTableTmp[Monthly Table]:::yellow
+  BQGreenTableExt --> BQGreenTableTmp[Monthly Table]:::green
+  BQYellowTableTmp --> BQYellowMerge[Merge to Main Table]:::yellow
+  BQGreenTableTmp --> BQGreenMerge[Merge to Main Table]:::green
+  BQYellowMerge --> PurgeFiles[Purge Files]
+  BQGreenMerge --> PurgeFiles[Purge Files]
+
+  classDef yellow fill:#FFD700,stroke:#000,stroke-width:1px;
+  classDef green fill:#32CD32,stroke:#000,stroke-width:1px;
+```
+
+You can either use the GCP Taxi flow, which is a modified version of the earlier taxi flow but uses GCP services, or use the GCP Taxi Scheduled flow which also includes scheduling to run monthly.
+
+```bash
+curl -X POST -u 'admin@kestra.io:Admin1234' http://localhost:8080/api/v1/flows/import -F fileUpload=@flows/08_gcp_taxi.yaml
+
+# OR
+
+curl -X POST -u 'admin@kestra.io:Admin1234' http://localhost:8080/api/v1/flows/import -F fileUpload=@flows/09_gcp_taxi_scheduled.yaml
+```

@@ -52,6 +52,8 @@ services:
       - kestra_data:/app/storage
       - /var/run/docker.sock:/var/run/docker.sock
       - /tmp/kestra-wd:/tmp/kestra-wd
+    env_file:
+      - .env
     environment:
       KESTRA_CONFIGURATION: |
         datasources:
@@ -73,6 +75,11 @@ services:
               basePath: "/app/storage"
           queue:
             type: postgres
+          ai:
+            type: gemini
+            gemini:
+              model-name: gemini-2.5-flash
+              api-key: ${GEMINI_API_KEY}
           tasks:
             tmpDir:
               path: /tmp/kestra-wd/tmp
