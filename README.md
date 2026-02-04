@@ -5,14 +5,15 @@ This repository contains my work for the DE Zoomcamp 2026 course. It includes my
 ## Table of Contents
 ### Modules
 1. Docker and Terraform
-   - [Notes](01-docker-terraform/notes.md)
+   - [Notes](01-docker-terraform/README.md)
    - [Homework](01-docker-terraform/homework.md)
 2. Workflow Orchestration
-   - [Notes](02-workflow-orchestration/notes.md)
+   - [Notes](02-workflow-orchestration/README.md)
    - [Homework](02-workflow-orchestration/homework.md)
 3. Data Warehouse
-   - In Progress
+   - [Notes](03-data-warehouse/README.md)
+   - [Homework](03-data-warehouse/homework.md)
 
 ### Workshops
 1. Data Ingestion with DLT
-   - TBD
+   - Set to start Tuesday, February 17 ([details](https://luma.com/hzis1yzp))
