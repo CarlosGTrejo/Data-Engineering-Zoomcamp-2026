@@ -20,7 +20,7 @@ Online Analytical Processing (OLAP) and Online Transaction Processing (OLTP) are
 **Cost reduction:**
 - Avoid `SELECT *` in queries, as it can lead to scanning more data than necessary and increase costs.
   - If you are exploring the data use data preview options.
-- Price your queries before running them (select the query and view the estimated cost in the top right corner of the query editor)
+- Price your queries before running them (select the query and view the estimated cost in the bottom left corner of the query editor)
 - Use clustered or partitioned tables
 - Use streaming inserts with caution.
 - Use materialized views to precompute and store the results of complex queries, which can reduce the amount of data scanned and improve query performance.
@@ -41,6 +41,22 @@ Online Analytical Processing (OLAP) and Online Transaction Processing (OLTP) are
 - For queries that join data from multiple tables, optimize your join patterns by starting with the largest table.
 
 For more best practices, see the [BigQuery documentation](https://docs.cloud.google.com/bigquery/docs/best-practices-performance-compute).
+
+## External Tables in BigQuery
+
+External tables in BigQuery allow you to query data stored outside of BigQuery, such as in Google Cloud Storage, without having to load it into BigQuery first. This can be useful for analyzing large datasets that are stored in GCS without incurring the cost of loading the data into BigQuery. However, querying external tables can be slower than querying data stored in BigQuery, as it requires reading data from an external source. Therefore, it's important to consider the trade-offs between cost and performance when deciding whether to use external tables in BigQuery.
+
+To create an external table in BigQuery, you can use the following SQL syntax:
+
+```sql
+CREATE EXTERNAL TABLE my_dataset.my_external_table
+OPTIONS (
+  format = 'PARQUET',
+  uris = ['gs://my_bucket/path/to/data/*.parquet']
+);
+```
+
+
 
 ## Partitioning and Clustering in BigQuery
 

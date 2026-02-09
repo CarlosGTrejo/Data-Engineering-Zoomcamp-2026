@@ -7,6 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "dlt[filesystem,postgres]>=1.20.0",
     "enlighten>=1.14.1",
+    "google-cloud-storage>=3.9.0",
     "pandas>=2.3.3",
     "pyarrow>=22.0.0",
     "typer>=0.21.1",
