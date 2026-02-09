@@ -56,8 +56,6 @@ OPTIONS (
 );
 ```
 
-
-
 ## Partitioning and Clustering in BigQuery
 
 Partitioning and clustering are two techniques used in BigQuery to optimize query performance and reduce costs when working with large datasets.
@@ -171,3 +169,5 @@ BigQuery ML is a feature of BigQuery that allows you to create and execute machi
 
 The following diagram can help you decide what algorithm to use based on the type of problem you are trying to solve:
 ![BigQuery ML Algorithm Selection](./figures/ml-in-bq.png)
+
+The sql statements for creating and using machine learning models in BigQuery are in the [bq_ml.sql](./bq_ml.sql) file.
