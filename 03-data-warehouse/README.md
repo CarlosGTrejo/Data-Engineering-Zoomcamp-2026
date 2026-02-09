@@ -171,3 +171,53 @@ The following diagram can help you decide what algorithm to use based on the typ
 ![BigQuery ML Algorithm Selection](./figures/ml-in-bq.png)
 
 The sql statements for creating and using machine learning models in BigQuery are in the [bq_ml.sql](./bq_ml.sql) file.
+
+To extract and deploy a model follow these steps (taken from the BigQuery [docs](https://cloud.google.com/bigquery-ml/docs/export-model-tutorial))
+
+1. **Authenticate to Google Cloud**
+   ```bash
+   gcloud auth login
+   ```
+
+2. **Extract the model to Google Cloud Storage**
+   Export the model `nytaxi.tip_model` to a GCS bucket.
+   ```bash
+   bq --project_id taxi-rides-ny extract -m nytaxi.tip_model gs://taxi_ml_model/tip_model
+   ```
+
+3. **Download the model locally**
+   Create a temporary directory and copy the model files from GCS.
+   ```bash
+   mkdir /tmp/model
+   gsutil cp -r gs://taxi_ml_model/tip_model /tmp/model
+   ```
+
+4. **Prepare the model for serving**
+   Create the directory structure required by TensorFlow Serving (requires a version number, e.g., `1`) and copy the model files.
+   ```bash
+   mkdir -p serving_dir/tip_model/1
+   cp -r /tmp/model/tip_model/* serving_dir/tip_model/1
+   ```
+
+5. **Run TensorFlow Serving with Docker**
+   Pull the image and run the container, mounting the local model directory to the container's model path.
+   ```bash
+   docker pull tensorflow/serving
+   docker run -p 8501:8501 \
+     --mount type=bind,source=`pwd`/serving_dir/tip_model,target=/models/tip_model \
+     -e MODEL_NAME=tip_model \
+     -t tensorflow/serving &
+   ```
+
+6. **Make a prediction**
+   Send a POST request to the running service with sample data.
+   ```bash
+   curl -d '{"instances": [{"passenger_count":1, "trip_distance":12.2, "PULocationID":"193", "DOLocationID":"264", "payment_type":"2","fare_amount":20.4,"tolls_amount":0.0}]}' \
+     -X POST http://localhost:8501/v1/models/tip_model:predict
+   ```
+
+7. **Verify model status**
+   Check the model metadata.
+   ```bash
+   http://localhost:8501/v1/models/tip_model
+   ```
