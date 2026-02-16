@@ -486,3 +486,143 @@ ECT
 FROM trip_duration_calculated
 ```
 
+## dbt commands
+
+### dbt init
+
+Initializes a new dbt project with the full directory structure (models, seeds, tests, etc.). Run this once at the start.
+
+```bash
+dbt init
+```
+
+### dbt debug
+
+Checks `profiles.yml` validity and database connection. Use when setting up a new environment or troubleshooting connections.
+
+```bash
+dbt debug
+```
+
+### dbt deps
+
+Installs dependencies listed in `packages.yml`. Run this after adding new packages.
+
+```bash
+dbt deps
+```
+
+### dbt clean
+
+Deletes artifacts in `target/` and `dbt_packages/`. Use for a fresh start.
+
+```bash
+dbt clean
+```
+
+### dbt seed
+
+Loads CSV files from the `seeds/` directory into the data warehouse. Useful for static data like lookup tables.
+
+```bash
+dbt seed
+```
+
+### dbt snapshot
+
+Executes snapshot definitions to track data changes over time (SCD Type 2).
+
+```bash
+dbt snapshot
+```
+
+### dbt source freshness
+
+Checks if source data is up-to-date based on `freshness` blocks in source YAML files.
+
+```bash
+dbt source freshness
+```
+
+### dbt docs generate / dbt docs serve
+
+Generates documentation artifacts and serves a local website to browse them.
+
+```bash
+dbt docs generate && dbt docs serve
+```
+
+### dbt compile
+
+Compiles models into raw SQL in the `target/` directory without running them. Useful for debugging Jinja or checking generated SQL.
+
+```bash
+dbt compile
+```
+
+### dbt run
+
+Materializes models (views, tables) in the data warehouse.
+
+```bash
+dbt run
+```
+
+### dbt test
+
+Runs defined tests (generic, singular) to validate data integrity. Does not modify data.
+
+```bash
+dbt test
+```
+
+### dbt build
+
+Runs seeds, snapshots, models, and tests in dependency order. Stops downstream execution if an upstream resource fails. Preferred for production and CI.
+
+```bash
+dbt build
+```
+
+### dbt retry
+
+Re-runs only the nodes that failed in the previous run (and their downstream dependencies) based on `run_results.json`.
+
+```bash
+dbt retry
+```
+
+## dbt flags
+
+### --full-refresh
+
+Drops and recreates incremental models from scratch.
+
+```bash
+dbt run --full-refresh
+```
+
+### --fail-fast
+
+Stops execution immediately upon the first failure. Useful for CI/CD.
+
+```bash
+dbt build --fail-fast
+```
+
+### --target
+
+Specifies which target (environment) from `profiles.yml` to run against (e.g., `dev`, `prod`).
+
+```bash
+dbt run --target prod
+```
+
+### --select / -s
+
+Runs specific parts of the project. Supports selection by model name, directory, tag, or graph operators (`+` for dependencies).
+
+```bash
+# Run a specific model and its downstream dependencies
+dbt run --select my_model+
+```
