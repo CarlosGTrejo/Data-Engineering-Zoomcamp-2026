@@ -193,3 +193,296 @@ Presentation area
 - tables ready for dashboards
 - properly modeled, clean tables
 
+## documentation in dbt
+
+Using yaml files you can add documentation for almost anything in dbt:
+
+- models
+- macros
+- sources
+- tests
+- etc.
+
+This documentation can be rendered in a nice format using the `dbt docs generate` command, which creates a JSON file that contains all the docs and info about your dbt models and a static website that you can view with `dbt docs serve`. This is a great way to share documentation with your team and stakeholders, but does not replace data catalog tools. You can also link models to sources and tests to ensure that your documentation is always up to date with your data models.
+
+## tests in dbt
+
+### Singular tests
+
+These are simple sql statment tests that go in the tests directory.
+If the statment returns more than 0 rows, the test fails and the dbt build fails. These are useful for testing specific conditions in your data, such as checking for null values or ensuring that a column has unique values.
+
+```sql
+select
+  order_id,
+  sum(amount) as total_amount
+from {{ ref('orders') }}
+group by all
+having sum(amount) < 0
+```
+
+### Source Freshness tests
+
+Source freshness tests are a type of test in dbt that check the freshness of your data sources. They ensure that the data in your source tables is up to date and meets certain criteria. For example, you can set a freshness test to check if the data in a source table is no more than 24 hours old. If the data is older than that, the test will fail and alert you to investigate the issue. This is important for ensuring that your data models are built on reliable and timely data, which is crucial for making informed business decisions.
+
+They are defined using yaml files in the `sources` directory. You can specify the freshness criteria, such as the maximum age of the data, and dbt will automatically check this during the build process, or you can run the freshness tests separately using the `dbt source freshness` command.
+
+### Generic tests
+
+Within your model yaml files (like `sources.yml` in our case), you can define 4 kinds of generic tests that can be applied to any column in your models:
+
+- **not_null**: checks that a column does not contain any null values
+- **unique**: checks that all values in a column are unique
+- **accepted_values**: checks that all values in a column are within a specified list of accepted values
+- **relationships**: checks that values in a column have corresponding values in another table
+
+## Custom Generic tests
+
+Although dbt provides 4 built-in generic tests, you can create your own using sql files and jinja under `tests/generic/`. 
+
+
+```sql
+{% test warn_if_odd(model, column_name) %}
+  {{ config(severity='warn') }}
+  
+  select *
+  from {{ model }}
+  where mod({{ column_name }}, 2) = 1
+{% endtest %}
+```
+
+## Unit tests
+
+Unit tests in dbt are tests that check the logic of your models at a granular level. They are defined as SQL files in the `tests` directory and can be run independently of the dbt build process. Unit tests are useful for testing specific transformations or calculations in your models to ensure they are producing the expected results. For example, you might create a unit test to check that a calculated column is returning the correct values based on known inputs. If the unit test fails, it indicates that there is an issue with the logic in your model that needs to be addressed before it can be used for analysis or reporting.
+
+They can also be used to test for data quality issues that have not shown up yet.
+
+Unit test:
+
+```sql
+-- Unit test for valid email addresses
+
+with customers as (
+  select * from {{ ref('stg_customers') }}
+),
+
+check_valid_emails as (
+  select
+    regexp_like(
+      email,
+      r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'
+    ) as is_valid_email
+  from customers
+)
+
+select * from check_valid_emails
+```
+
+Fixture file:
+
+```yml
+unit_tests:
+  - name: test_is_valid_email
+    description: "Check is_valid_email_address logic captures all known edge cases."
+    model: my_model
+    given:
+      - input: ref('stg_customers')
+        rows:
+          - {email: cool@example.com}
+          - {email: cool@unknown.com}
+          - {email: badgmail.com}
+          - {email: missingdot@gmailcom}
+    expect:
+      rows:
+        - {email: cool@example.com, is_valid_email: true}
+        - {email: cool@unknown.com, is_valid_email: true}
+        - {email: badgmail.com, is_valid_email: false}
+        - {email: missingdot@gmailcom, is_valid_email: false}
+```
+
+## Model Contracts
+
+Model contracts can be added in your models yaml file under `config` and are a way to enforce certain conditions on your models. For example, you can specify that a model should always have a certain column, or that a column should always be of a certain data type. If the model does not meet the contract, the dbt build will fail. This is useful for ensuring that your models are consistent and meet certain standards before they are used for analysis or reporting.
+
+```yml
+models:
+  - name: my_model
+    config:
+      contracts:
+        enforced: true
+    columns:
+      - name: id
+        data_type: int
+        contraints:
+          - type: not_null
+      - name: customer_name
+        data_type: string
+        ...
+```
+
+## dbt packages
+
+To use a package, create a `packages.yml` file in the root of your dbt project and add the package name and version you want to use. Then run `dbt deps` to install the package.
+
+### dbt_utils
+
+contains a collection of useful macros and functions that can be used in your dbt project.
+
+### dbt_project_evaluator
+
+evaluates your dbt project based on good practices and provides feedback on how to improve your project structure, naming conventions, and other aspects of your dbt project.
+
+### codegen
+
+Helps generate yaml files for models.
+
+### dbt_expectations
+
+Provides a set of pre-built tests that you can use in your dbt project to validate your data. It includes tests for common data quality issues, such as null values, duplicates, and outliers, as well as more complex tests for specific data patterns and relationships. By using dbt_expectations, you can easily add robust testing to your dbt project and ensure that your data is accurate and reliable.
+
+## SQL Refresher
+
+### Window functions
+
+A window function performs a calculation across a set of table rows that are related to the current row. Unlike aggregate functions, rows retain their separate identities.
+
+Syntax: `FUNCTION() OVER (PARTITION BY ... ORDER BY ...)`
+
+#### Row Number
+
+`ROW_NUMBER()` returns the sequential number of a row within a partition of a result set, starting at 1 for the first row in each partition. It is commonly used for removing duplicates or selecting the top N records per group.
+
+```sql
+SELECT
+  total_amount,
+  PULocationID,
+  ROW_NUMBER() OVER (PARTITION BY PULocationID ORDER BY total_amount DESC) AS ranking
+FROM greentaxi_trips
+LIMIT 10;
+```
+
+| total_amount | PULocationID | ranking |
+| ------------ | ------------ | ------- |
+| 86.42        | 234          | 1       |
+| 73.5         | 234          | 2       |
+| 62.7         | 234          | 3       |
+| ...          | ...          | ...     |
+| 8.51         | 224          | 1       |
+| 8.3          | 224          | 2       |
+
+
+#### Rank and Dense Rank
+
+- `RANK()`: Assigns a rank, skipping numbers if there are ties (e.g., 1, 2, 2, 4).
+- `DENSE_RANK()`: Assigns a rank without skipping numbers (e.g., 1, 2, 2, 3).
+
+```sql
+SELECT
+  Score,
+  RANK() OVER (ORDER BY Score DESC) as Rank,
+  DENSE_RANK() OVER (ORDER BY Score DESC) as Dense_Rank
+FROM scores
+```
+
+| Score | RANK() | DENSE_RANK() |
+| ----- | ------ | ------------ |
+| 95    | 1      | 1            |
+| 90    | 2      | 2            |
+| 90    | 2      | 2            |
+| 85    | 4      | 3            |
+
+
+#### Lag and Lead
+
+- `LAG()`: Accesses data from a previous row.
+- `LEAD()`: Accesses data from a subsequent row.
+
+These are useful for comparing the current row with previous or next values without needing self-joins.
+
+```sql
+SELECT
+  lpep_pickup_datetime,
+  total_amount,
+  LAG(total_amount) OVER (ORDER BY lpep_pickup_datetime) as prev_total_amount,
+  LEAD(total_amount) OVER (ORDER BY lpep_pickup_datetime) as next_total_amount
+FROM greentaxi_trips
+ORDER BY lpep_pickup_datetime;
+```
+
+| lpep_pickup_datetime    | total_amount | prev_total_amount | next_total_amount |
+| ----------------------- | ------------ | ----------------- | ----------------- |
+| 2008-12-31 23:33:38 UTC | 7.3          | NULL              | 5.3               |
+| 2008-12-31 23:42:31 UTC | 5.3          | 7.3               | 14.55             |
+| 2008-12-31 23:47:51 UTC | 14.55        | 5.3               | 19.55             |
+| 2008-12-31 23:57:46 UTC | 19.55        | 14.55             | 9.8               |
+
+
+#### Percentile Cont
+
+Calculates the specified percentile value for the distribution of values.
+
+```sql
+SELECT
+  PULocationID,
+  total_amount,
+  PERCENTILE_CONT(total_amount, 0.9) OVER (PARTITION BY PULocationID) AS p90
+FROM greentaxi_trips;
+```
+
+| PULocationID | total_amount | p90  |
+| ------------ | ------------ | ---- |
+| 224          | 17.3         | 51.9 |
+| 224          | 20.67        | 51.9 |
+| ...          | ...          | ...  |
+| 224          | 55.46        | 51.9 |
+
+
+### Common Table Expressions (CTEs)
+
+A CTE is a temporary result set that you can reference within a SELECT, INSERT, UPDATE, or DELETE statement. It makes complex queries more readable and maintainable by breaking them into smaller, logical building blocks.
+
+```sql
+WITH cte AS (
+   
+
+| lpep_pickup_datetime    | total_amount | rank |
+| ----------------------- | ------------ | ---- |
+| 2019-10-10 15:22:49 UTC | 2878.3       | 2    |
+ SELECT
+        lpep_pickup_datetime,
+        total_amount,
+        RANK() OVER (ORDER BY total_amount DESC) AS rank
+    FROM greentaxi_trips
+)
+SELECT * FROM cte
+WHERE rank = 2;
+```
+
+### dbt models and CTEs
+
+CTEs are heavily used in dbt to structure transformations. A common pattern is to define a CTE for your source data or intermediate calculations and then select from it.
+
+```sql
+-- Calculating trip duration and the 90th percentile
+WITH trip_duration_calculated AS (
+    SELECT
+        *,
+        timestamp_diff(dropOff_datetime, pickup_datetime, second) as trip_duration
+    FROM `fhv_trips`
+)
+SEL
+
+| PUlocationID | trip_duration | trip_duration_p90 |
+| ------------ | ------------- | ----------------- |
+| 190          | 451           | 2170.0            |
+| 190          | 1373          | 2170.0            |
+| ...          | ...           | ...               |
+| 32           | 546           | 1988.0            |
+| 32           | 151           | 1988.0            |
+ECT
+    PUlocationID,
+    trip_duration,
+    PERCENTILE_CONT(trip_duration, 0.90) OVER (PARTITION BY PUlocationID) AS trip_duration_p90
+FROM trip_duration_calculated
+```
+
