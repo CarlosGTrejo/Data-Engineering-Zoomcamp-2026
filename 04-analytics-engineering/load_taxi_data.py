@@ -15,10 +15,10 @@ import typer
 from google.api_core.exceptions import Forbidden, NotFound
 from google.cloud import storage
 
-URL_TEMPLATE = "https://github.com/DataTalksClub/nyc-tlc-data/releases/download/{color}/{color}_tripdata_{year}-{month}.csv.gz"
+URL_TEMPLATE = "https://github.com/DataTalksClub/nyc-tlc-data/releases/download/{service}/{service}_tripdata_{year}-{month}.csv.gz"
 YEARS = [2019, 2020]
 MONTHS = range(1, 13)
-COLORS = ["green", "yellow"]
+SERVICES = ["green", "yellow", "fhv"]
 
 REQUEST_TIMEOUT = (10, 60)
 UPLOAD_TIMEOUT = 120
@@ -35,12 +35,12 @@ def make_status_logger(status_bar) -> Callable[[str], None]:
     return log
 
 
-def convert_remote_csv_gz_to_parquet_bytes(url: str, color: str) -> bytes:
+def convert_remote_csv_gz_to_parquet_bytes(url: str, service: str) -> bytes:
     with requests.get(url, timeout=REQUEST_TIMEOUT, stream=True) as response:
         response.raise_for_status()
 
         with gzip.GzipFile(fileobj=response.raw) as gzip_stream:
-            if color == "green":
+            if service == "green":
                 convert_options = pv.ConvertOptions(
                     column_types={"ehail_fee": pa.float64()}
                 )
@@ -105,18 +105,18 @@ def upload_parquet_bytes(
 
 
 def process_asset(
-    color: str,
+    service: str,
     year: int,
     month: int,
     bucket: storage.Bucket,
     log: Callable[[str], None],
     max_retries: int,
 ) -> bool:
-    url = URL_TEMPLATE.format(color=color, year=year, month=f"{month:02d}")
-    log(f"[+] Processing {color} taxi data for {year}-{month:02d}")
+    url = URL_TEMPLATE.format(service=service, year=year, month=f"{month:02d}")
+    log(f"[+] Processing {service} service data for {year}-{month:02d}")
 
     try:
-        parquet_payload = convert_remote_csv_gz_to_parquet_bytes(url, color)
+        parquet_payload = convert_remote_csv_gz_to_parquet_bytes(url, service)
     except requests.RequestException as error:
         log(f"Failed to fetch {url}: {error}")
         return False
@@ -126,8 +126,8 @@ def process_asset(
 
     blob_name = str(
         PurePosixPath(str(year))
-        / color
-        / f"{color}_tripdata_{year}-{month:02d}.parquet"
+        / service
+        / f"{service}_tripdata_{year}-{month:02d}.parquet"
     )
     return upload_parquet_bytes(
         bucket, blob_name, parquet_payload, log, max_retries=max_retries
@@ -137,12 +137,18 @@ def process_asset(
 def main(
     project_id: str = typer.Argument(..., help="GCP project ID"),
     bucket_name: str = typer.Argument(..., help="Target GCS bucket name"),
-    color: str | None = typer.Option(
+    service: str | None = typer.Option(
         None,
-        "--color",
-        "-c",
-        help="Taxi color to process: yellow or green. Defaults to both.",
+        "--service",
+        "-s",
+        help="Service to process: yellow, green, or fhv. Defaults to all.",
         case_sensitive=False,
+    ),
+    year: int | None = typer.Option(
+        None,
+        "--year",
+        "-y",
+        help="Year to process. Defaults to all configured years.",
     ),
     max_retries: int = typer.Option(3, min=1, help="Upload retry attempts"),
     max_workers: int = typer.Option(
@@ -154,20 +160,30 @@ def main(
     client = storage.Client(project=project_id)
     bucket = create_bucket(bucket_name, client)
 
-    selected_colors = COLORS
-    if color is not None:
-        selected_color = color.lower()
-        if selected_color not in COLORS:
+    selected_services = SERVICES
+    if service is not None:
+        selected_service = service.lower()
+        if selected_service not in SERVICES:
             raise typer.BadParameter(
-                "Invalid --color value. Use 'yellow' or 'green'.",
-                param_hint="--color",
+                "Invalid --service value. Use 'yellow', 'green', or 'fhv'.",
+                param_hint="--service",
             )
-        selected_colors = [selected_color]
+        selected_services = [selected_service]
+
+    selected_years = YEARS
+    if year is not None:
+        if year not in YEARS:
+            valid_years = ", ".join(str(valid_year) for valid_year in YEARS)
+            raise typer.BadParameter(
+                f"Invalid --year value. Use one of: {valid_years}.",
+                param_hint="--year",
+            )
+        selected_years = [year]
 
     jobs = [
-        (job_color, year, month)
-        for job_color in selected_colors
-        for year in YEARS
+        (job_service, year, month)
+        for job_service in selected_services
+        for year in selected_years
         for month in MONTHS
     ]
     total_count = len(jobs)
@@ -194,30 +210,30 @@ def main(
     try:
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {}
-            for color, year, month in jobs:
+            for service, year, month in jobs:
                 future = executor.submit(
                     process_asset,
-                    color,
+                    service,
                     year,
                     month,
                     bucket,
                     log,
                     max_retries,
                 )
-                futures[future] = (color, year, month)
+                futures[future] = (service, year, month)
 
             for future in as_completed(futures):
-                color, year, month = futures[future]
+                service, year, month = futures[future]
                 try:
                     uploaded = future.result()
                 except Exception as error:
                     log(
-                        f"Unexpected failure for {color} taxi data {year}-{month:02d}: {error}"
+                        f"Unexpected failure for {service} service data {year}-{month:02d}: {error}"
                     )
                     uploaded = False
 
                 processed_bar.update(1)
-                log(f"Finished {color} taxi data for {year}-{month:02d}")
+                log(f"Finished {service} service data for {year}-{month:02d}")
 
                 if uploaded:
                     success_count += 1
