@@ -29,10 +29,7 @@ models/
 
 If you run `dbt run --select int_trips_unioned`, what models will be built?
 
-- `stg_green_tripdata`, `stg_yellow_tripdata`, and `int_trips_unioned` (upstream dependencies)
-- Any model with upstream and downstream dependencies to `int_trips_unioned`
-- `int_trips_unioned` only
-- `int_trips_unioned`, `int_trips`, and `fct_trips` (downstream dependencies)
+**Answer:** `int_trips_unioned` only because dbt only builds the selected model, and the `+` was not used to specify dependencies.
 
 ---
 
@@ -54,10 +51,8 @@ Your model `fct_trips` has been running successfully for months. A new value `6`
 
 What happens when you run `dbt test --select fct_trips`?
 
-- dbt will skip the test because the model didn't change
-- dbt will fail the test, returning a non-zero exit code
-- dbt will pass the test with a warning about the new value
-- dbt will update the configuration to include the new value
+**Answer:** dbt will fail the test, returning a non-zero exit code
+
 
 ---
 
@@ -67,10 +62,11 @@ After running your dbt project, query the `fct_monthly_zone_revenue` model.
 
 What is the count of records in the `fct_monthly_zone_revenue` model?
 
-- 12,998
-- 14,120
-- 12,184
-- 15,421
+```sql
+select count(*) as total_rows from {{ ref("fct_monthly_zone_revenue") }}
+```
+
+**Answer:** 12,184
 
 ---
 
@@ -80,10 +76,16 @@ Using the `fct_monthly_zone_revenue` table, find the pickup zone with the **high
 
 Which zone had the highest revenue?
 
-- East Harlem North
-- Morningside Heights
-- East Harlem South
-- Washington Heights South
+```sql
+SELECT pickup_zone
+FROM {{ ref("fct_monthly_zone_revenue") }}
+WHERE service_type = 'Green'
+AND EXTRACT(YEAR FROM revenue_month) = 2020
+ORDER BY revenue_monthly_total_amount DESC
+LIMIT 1
+```
+
+**Answer:** East Harlem North
 
 ---
 
@@ -91,10 +93,15 @@ Which zone had the highest revenue?
 
 Using the `fct_monthly_zone_revenue` table, what is the **total number of trips** (`total_monthly_trips`) for Green taxis in October 2019?
 
-- 500,234
-- 350,891
-- 384,624
-- 421,509
+```sql
+SELECT SUM(total_monthly_trips)
+FROM {{ ref("fct_monthly_zone_revenue") }}
+WHERE service_type = 'Green'
+AND EXTRACT(YEAR FROM revenue_month) = 2019
+AND EXTRACT(MONTH FROM revenue_month) = 10
+```
+
+**Answer:** 384,624
 
 ---
 
@@ -109,10 +116,43 @@ Create a staging model for the **For-Hire Vehicle (FHV)** trip data for 2019.
 
 What is the count of records in `stg_fhv_tripdata`?
 
-- 42,084,899
-- 43,244,693
-- 22,998,722
-- 44,112,187
+Staging Model:
+
+```sql
+with fhv_tripdata as (
+    select *
+    from {{ source('raw_data', 'fhv_external') }}
+    where dispatching_base_num is not null
+),
+
+renamed as (
+    select
+        -- identifiers
+        cast(pulocationid as integer) as pickup_location_id,
+        cast(dolocationid as integer) as dropoff_location_id,
+        Affiliated_base_number as affiliated_base_id,
+        dispatching_base_num as dispatching_base_id,
+
+
+        -- timestamps
+        cast(pickup_datetime as timestamp) as pickup_datetime,
+        cast(dropOff_datetime as timestamp) as dropoff_datetime,
+
+        -- trip info
+        cast(SR_Flag as integer) as sr_flag
+    from fhv_tripdata
+)
+
+select * from renamed
+```
+
+Row Count Query:
+
+```sql
+select count(*) as total_rows from {{ ref("stg_fhv_tripdata") }}
+```
+
+**Answer:** 43,244,693
 
 ---
 
