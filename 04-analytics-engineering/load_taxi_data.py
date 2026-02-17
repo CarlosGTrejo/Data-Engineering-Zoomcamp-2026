@@ -18,6 +18,7 @@ from google.cloud import storage
 URL_TEMPLATE = "https://github.com/DataTalksClub/nyc-tlc-data/releases/download/{color}/{color}_tripdata_{year}-{month}.csv.gz"
 YEARS = [2019, 2020]
 MONTHS = range(1, 13)
+COLORS = ["green", "yellow"]
 
 REQUEST_TIMEOUT = (10, 60)
 UPLOAD_TIMEOUT = 120
@@ -34,12 +35,20 @@ def make_status_logger(status_bar) -> Callable[[str], None]:
     return log
 
 
-def convert_remote_csv_gz_to_parquet_bytes(url: str) -> bytes:
+def convert_remote_csv_gz_to_parquet_bytes(url: str, color: str) -> bytes:
     with requests.get(url, timeout=REQUEST_TIMEOUT, stream=True) as response:
         response.raise_for_status()
 
         with gzip.GzipFile(fileobj=response.raw) as gzip_stream:
-            table = pv.read_csv(pa.input_stream(gzip_stream))
+            if color == "green":
+                convert_options = pv.ConvertOptions(
+                    column_types={"ehail_fee": pa.float64()}
+                )
+                table = pv.read_csv(
+                    pa.input_stream(gzip_stream), convert_options=convert_options
+                )
+            else:
+                table = pv.read_csv(pa.input_stream(gzip_stream))
             output = pa.BufferOutputStream()
             pq.write_table(table, output, compression="snappy")
             return output.getvalue().to_pybytes()
@@ -107,7 +116,7 @@ def process_asset(
     log(f"[+] Processing {color} taxi data for {year}-{month:02d}")
 
     try:
-        parquet_payload = convert_remote_csv_gz_to_parquet_bytes(url)
+        parquet_payload = convert_remote_csv_gz_to_parquet_bytes(url, color)
     except requests.RequestException as error:
         log(f"Failed to fetch {url}: {error}")
         return False
@@ -128,6 +137,13 @@ def process_asset(
 def main(
     project_id: str = typer.Argument(..., help="GCP project ID"),
     bucket_name: str = typer.Argument(..., help="Target GCS bucket name"),
+    color: str | None = typer.Option(
+        None,
+        "--color",
+        "-c",
+        help="Taxi color to process: yellow or green. Defaults to both.",
+        case_sensitive=False,
+    ),
     max_retries: int = typer.Option(3, min=1, help="Upload retry attempts"),
     max_workers: int = typer.Option(
         1,
@@ -138,9 +154,19 @@ def main(
     client = storage.Client(project=project_id)
     bucket = create_bucket(bucket_name, client)
 
+    selected_colors = COLORS
+    if color is not None:
+        selected_color = color.lower()
+        if selected_color not in COLORS:
+            raise typer.BadParameter(
+                "Invalid --color value. Use 'yellow' or 'green'.",
+                param_hint="--color",
+            )
+        selected_colors = [selected_color]
+
     jobs = [
-        (color, year, month)
-        for color in ["yellow", "green"]
+        (job_color, year, month)
+        for job_color in selected_colors
         for year in YEARS
         for month in MONTHS
     ]
