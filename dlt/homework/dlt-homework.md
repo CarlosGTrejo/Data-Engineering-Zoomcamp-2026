@@ -24,7 +24,7 @@ Prompt: What is the start date and end date of the dataset?
 Prompt: Create a simple marimo notebook that I can use to query the dataset.
 ```
 
-> The agent created the notebook and I opened it with `marimo edit marimo_query_notebook.py`
+> The agent created the notebook and I opened it with `marimo edit marimo_query_notebo  ok.py`
 > The SQL input cell created by the agent didn't work,
 > so I added a native SQL cell manually and set connection to the duckdb database.
 
