@@ -13,7 +13,14 @@ This repository contains my work for the DE Zoomcamp 2026 course. It includes my
 3. Data Warehouse
    - [Notes](03-data-warehouse/README.md)
    - [Homework](03-data-warehouse/homework.md)
+4. Analytics Engineering
+   - [Notes](04-analytics-engineering/README.md)
+   - [Homework](04-analytics-engineering/homework.md)
+5. Data Platforms
+   - [Notes](05-data-platforms/README.md)
+   - [Homework](05-data-platforms/homework.md)
 
 ### Workshops
 1. Data Ingestion with DLT
-   - Set to start Tuesday, February 17 ([details](https://luma.com/hzis1yzp))
+   - [Notes](dlt/dlt-workshop/notes.md)
+   - [Homework](dlt/homework/dlt-homework.md)
