@@ -5,7 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "dlt[filesystem,postgres]>=1.20.0",
+    "dlt[filesystem,postgres,workspace]>=1.20.0",
     "enlighten>=1.14.1",
     "google-cloud-storage>=3.9.0",
     "pandas>=2.3.3",
