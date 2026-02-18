@@ -242,3 +242,7 @@ terraform.rc
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,python,jupyternotebooks
 
 postgres_db/
+.bruin.yml
+logs/runs
+logs/*.log
+logs/queries

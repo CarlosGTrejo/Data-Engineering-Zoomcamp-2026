@@ -1,0 +1,6 @@
+pandas==2.2.3
+requests==2.32.3
+pyarrow==18.1.0
+python-dateutil==2.9.0.post0
+# Example:
+
