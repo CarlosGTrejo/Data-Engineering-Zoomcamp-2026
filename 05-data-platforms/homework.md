@@ -17,10 +17,10 @@ After completing the setup, you should have a working NYC taxi data pipeline.
 
 In a Bruin project, what are the required files/directories?
 
-- `bruin.yml` and `assets/`
-- `.bruin.yml` and `pipeline.yml` (assets can be anywhere)
-- `.bruin.yml` and `pipeline/` with `pipeline.yml` and `assets/`
-- `pipeline.yml` and `assets/` only
+- [ ] `bruin.yml` and `assets/`
+- [ ] `.bruin.yml` and `pipeline.yml` (assets can be anywhere)
+- [x] `.bruin.yml` and `pipeline/` with `pipeline.yml` and `assets/`
+- [ ] `pipeline.yml` and `assets/` only
 
 ---
 
@@ -28,10 +28,10 @@ In a Bruin project, what are the required files/directories?
 
 You're building a pipeline that processes NYC taxi data organized by month based on `pickup_datetime`. Which materialization strategy should you use for the staging layer that deduplicates and cleans the data?
 
-- `append` - always add new rows
-- `replace` - truncate and rebuild entirely
-- `time_interval` - incremental based on a time column
-- `view` - create a virtual table only
+- [ ] `append` - always add new rows
+- [ ] `replace` - truncate and rebuild entirely
+- [x] `time_interval` - incremental based on a time column
+- [ ] `view` - create a virtual table only
 
 ---
 
@@ -50,10 +50,10 @@ variables:
 
 How do you override this when running the pipeline to only process yellow taxis?
 
-- `bruin run --taxi-types yellow`
-- `bruin run --var taxi_types=yellow`
-- `bruin run --var 'taxi_types=["yellow"]'`
-- `bruin run --set taxi_types=["yellow"]`
+- [ ] `bruin run --taxi-types yellow`
+- [ ] `bruin run --var taxi_types=yellow`
+- [x] `bruin run --var 'taxi_types=["yellow"]'`
+- [ ] `bruin run --set taxi_types=["yellow"]`
 
 ---
 
@@ -61,10 +61,10 @@ How do you override this when running the pipeline to only process yellow taxis?
 
 You've modified the `ingestion/trips.py` asset and want to run it plus all downstream assets. Which command should you use?
 
-- `bruin run ingestion.trips --all`
-- `bruin run ingestion/trips.py --downstream`
-- `bruin run pipeline/trips.py --recursive`
-- `bruin run --select ingestion.trips+`
+- [ ] `bruin run ingestion.trips --all`
+- [x] `bruin run ingestion/trips.py --downstream`
+- [ ] `bruin run pipeline/trips.py --recursive`
+- [ ] `bruin run --select ingestion.trips+`
 
 ---
 
@@ -72,10 +72,15 @@ You've modified the `ingestion/trips.py` asset and want to run it plus all downs
 
 You want to ensure the `pickup_datetime` column in your trips table never has NULL values. Which quality check should you add to your asset definition?
 
-- `unique: true`
-- `not_null: true`
-- `positive: true`
-- `accepted_values: [not_null]`
+<!-- Possible question mistake? The not_null check is document as:
+checks:
+  - name: not_null
+-->
+
+- [ ] `unique: true`
+- [x] `not_null: true`
+- [ ] `positive: true`
+- [ ] `accepted_values: [not_null]`
 
 ---
 
@@ -83,10 +88,10 @@ You want to ensure the `pickup_datetime` column in your trips table never has NU
 
 After building your pipeline, you want to visualize the dependency graph between assets. Which Bruin command should you use?
 
-- `bruin graph`
-- `bruin dependencies`
-- `bruin lineage`
-- `bruin show`
+- [ ] `bruin graph`
+- [ ] `bruin dependencies`
+- [x] `bruin lineage`
+- [ ] `bruin show`
 
 ---
 
@@ -94,10 +99,10 @@ After building your pipeline, you want to visualize the dependency graph between
 
 You're running a Bruin pipeline for the first time on a new DuckDB database. What flag should you use to ensure tables are created from scratch?
 
-- `--create`
-- `--init`
-- `--full-refresh`
-- `--truncate`
+- [ ] `--create`
+- [ ] `--init`
+- [x] `--full-refresh`
+- [ ] `--truncate`
 
 ---
 
