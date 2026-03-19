@@ -197,17 +197,17 @@ After the job processes all data, query the results:
 
 ```sql
 SELECT PULocationID, num_trips
-FROM <your_table>
+FROM processed_events_aggregated
 ORDER BY num_trips DESC
 LIMIT 3;
 ```
 
 Which `PULocationID` had the most trips in a single 5-minute window?
 
-- 42
-- 74
-- 75
-- 166
+- [ ]42
+- [X]74
+- [ ]75
+- [ ]166
 
 
 ## Question 5. Session window - longest streak
@@ -224,10 +224,18 @@ with the longest session (most trips in a single session).
 
 How many trips were in the longest session?
 
-- 12
-- 31
-- 51
-- 81
+
+```sql
+SELECT *
+FROM longest_session_trips
+ORDER BY num_trips DESC
+LIMIT 3;
+```
+
+- [ ]12
+- [ ]31
+- [ ]51
+- [X]81
 
 
 ## Question 6. Tumbling window - largest tip
@@ -237,50 +245,14 @@ total `tip_amount` per hour (across all locations).
 
 Which hour had the highest total tip amount?
 
-- 2025-10-01 18:00:00
-- 2025-10-16 18:00:00
-- 2025-10-22 08:00:00
-- 2025-10-30 16:00:00
-
-
-## Submitting the solutions
-
-- Form for submitting: https://courses.datatalks.club/de-zoomcamp-2026/homework/hw7
-
-
-## Learning in public
-
-We encourage everyone to share what they learned.
-Read more about the benefits [here](https://alexeyondata.substack.com/p/benefits-of-learning-in-public-and).
-
-## Example post for LinkedIn
-
-```
-Week 7 of Data Engineering Zoomcamp by @DataTalksClub complete!
-
-Just finished Module 7 - Streaming with PyFlink. Learned how to:
-
-- Set up Redpanda as a Kafka replacement
-- Build Kafka producers and consumers in Python
-- Create tumbling and session windows in Flink
-- Analyze real-time taxi trip data with stream processing
-
-Here's my homework solution: <LINK>
-
-You can sign up here: https://github.com/DataTalksClub/data-engineering-zoomcamp/
+```sql
+SELECT window_start, window_end, total_tip_amount 
+FROM max_tip_per_hour 
+ORDER BY total_tip_amount DESC 
+LIMIT 3;
 ```
 
-## Example post for Twitter/X
-
-```
-Module 7 of Data Engineering Zoomcamp done!
-
-- Kafka producers and consumers
-- PyFlink tumbling and session windows
-- Real-time taxi data analysis
-- Redpanda as Kafka replacement
-
-My solution: <LINK>
-
-Free course by @DataTalksClub: https://github.com/DataTalksClub/data-engineering-zoomcamp/
-```
+- [ ]2025-10-01 18:00:00
+- [X]2025-10-16 18:00:00
+- [ ]2025-10-22 08:00:00
+- [ ]2025-10-30 16:00:00
